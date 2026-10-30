@@ -37,12 +37,12 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 
 ## Steps
 
-### [ ] 1. Skeleton
+### [x] 1. Skeleton
 - [x] `go mod init github.com/razoreater/trnr`
 - [x] `main.go` that prints a welcome text
-- [ ] Read `GARMIN_API_KEY` with `os.Getenv`. If it's empty, print to stderr
+- [x] Read `GARMIN_API_KEY` with `os.Getenv`. If it's empty, print to stderr
   (`fmt.Fprintln(os.Stderr, ...)`) and `os.Exit(1)`. Otherwise print the key's length, never the key.
-- [ ] `.gitignore`: the `trnr` binary and `.env`
+- [x] `.gitignore`: the `trnr` binary and `.env`
 - Concepts: `package main`, zero values (`""` instead of None), `:=`, unused imports
   are compile errors, `go run .`, `go build`, `gofmt -l .`
 
