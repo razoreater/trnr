@@ -15,6 +15,8 @@ Tick a step when it's done (one commit per step).
   curl -X POST 'https://personal.connectapi.garmin.com/personalapitoken-service/personal-api/personal-api-key/token' \
     -H "Authorization: ApiKey $GARMIN_API_KEY"
   ```
+  The response is `text/plain`: the body is the token itself (a JWT starting with `eyJ`,
+  about 1100 characters), not JSON.
   The token is valid for 24h. There is no refresh token, so request a new one when it expires.
 - **Data calls:** same host, header `Authorization: Bearer <token>`.
 - **Docs (Swagger):** https://developer.garmin.com/gc-developer-program/personal/swagger-docs/
@@ -48,9 +50,11 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 
 ### [ ] 2. Get an access token
 - `func getToken(apiKey string) (string, error)`
-- First run the curl above by hand to see the real JSON response shape.
+- [x] Run the curl above by hand to see the response shape (plain text, not JSON).
+- [ ] POST with no body, read it with `io.ReadAll`, and return `strings.TrimSpace(string(body))`.
+  Check `resp.StatusCode` first, so an error body is never treated as a token.
 - Concepts: `http.NewRequest`, setting headers, `defer resp.Body.Close()`, checking
-  `resp.StatusCode`, `json.NewDecoder(...).Decode(&v)` into a struct with `json:"..."` tags,
+  `resp.StatusCode`, `io.ReadAll`, creating and wrapping errors with `fmt.Errorf` (`%w`),
   and the `(value, error)` return pattern with `if err != nil`.
 - Done when `go run .` prints "token OK". Never print the token.
 
@@ -58,7 +62,9 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 - A `client` struct (`*http.Client`, token, base URL) with method
   `getActivities(limit int) ([]Activity, error)`.
 - An `Activity` struct with only the fields you need. Unknown JSON fields are ignored.
-- Concepts: methods and receivers, slices, `url.Values` for query strings, nested structs.
+- First check the real response shape by hand (pipe the curl through `jq`).
+- Concepts: methods and receivers, slices, `url.Values` for query strings, nested structs,
+  `json.NewDecoder(...).Decode(&v)` into a struct with `json:"..."` tags.
 
 ### [ ] 4. Print a table
 - `text/tabwriter` columns: date | type | name | km | h:mm | pace or speed | avg HR | TE
@@ -75,6 +81,8 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 ### [ ] 6. Token cache
 - Save the token and its expiry to `~/.cache/trnr/token.json` (`os.UserCacheDir`)
   with file mode `0600`. Reuse it while it's valid and fetch a new one on expiry or a 401.
+- The token response has no expiry field: use `time.Now().Add(24 * time.Hour)`, or
+  (extra) decode the JWT's `exp` claim.
 - Concepts: file I/O, `os.MkdirAll`, `json.Marshal`, `time.Now().Before(...)`.
 
 ### [ ] 7. Wellness (optional)
