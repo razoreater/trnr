@@ -12,5 +12,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("TRNR API KEY Detected, its length is", len(apiKey))
+	token, err := getToken(apiKey)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "get token:", err)
+		os.Exit(1)
+	}
+	fmt.Println("token OK, length", len(token))
 }

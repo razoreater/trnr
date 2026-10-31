@@ -48,10 +48,10 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 - Concepts: `package main`, zero values (`""` instead of None), `:=`, unused imports
   are compile errors, `go run .`, `go build`, `gofmt -l .`
 
-### [ ] 2. Get an access token
+### [x] 2. Get an access token
 - `func getToken(apiKey string) (string, error)`
 - [x] Run the curl above by hand to see the response shape (plain text, not JSON).
-- [ ] POST with no body, read it with `io.ReadAll`, and return `strings.TrimSpace(string(body))`.
+- [x] POST with no body, read it with `io.ReadAll`, and return `strings.TrimSpace(string(body))`.
   Check `resp.StatusCode` first, so an error body is never treated as a token.
 - Concepts: `http.NewRequest`, setting headers, `defer resp.Body.Close()`, checking
   `resp.StatusCode`, `io.ReadAll`, creating and wrapping errors with `fmt.Errorf` (`%w`),
