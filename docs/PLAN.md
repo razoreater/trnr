@@ -2,7 +2,7 @@
 
 A small Go CLI that gives an overview of recent Garmin training, using the official
 Garmin Connect **Personal API**. Stdlib only (Go 1.22+): `net/http`, `encoding/json`,
-`flag`, `text/tabwriter`, `time`, `os`.
+`flag`, `text/tabwriter`, `time`, `os`. The optional step 9 adds lipgloss for styling.
 
 Tick a step when it's done (one commit per step).
 
@@ -91,6 +91,18 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 ### [ ] 8. Package split and tests (optional)
 - Move the API client to `internal/garmin/`.
 - Table-driven tests for formatting, plus `httptest.Server` to fake the API.
+
+### [ ] 9. Styled output with lipgloss (optional)
+- The first third-party dependency: `go get github.com/charmbracelet/lipgloss`.
+- Replace the `text/tabwriter` table with `lipgloss/table`: rounded border, bold header,
+  right-aligned number columns via `StyleFunc(func(row, col int) lipgloss.Style)`.
+- Color rows by `typeKey` (e.g. running vs cycling).
+- Show the weekly totals from step 5 in a bordered summary box above the table.
+- Keep the cell formatting (km, h:mm, pace) from step 4. Only the rendering changes.
+- Check that `trnr | less` still prints clean text (lipgloss drops colors when stdout
+  isn't a terminal).
+- Concepts: `go get`, `go.mod` / `go.sum`, importing a subpackage, method chaining,
+  passing functions as values.
 
 ## Target layout
 - `main.go`: flags, wiring, output
