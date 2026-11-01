@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 )
 
@@ -17,5 +18,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "get token:", err)
 		os.Exit(1)
 	}
-	fmt.Println("token OK, length", len(token))
+
+	c := &client{http: http.DefaultClient, token: token, baseURL: baseURL}
+	activities, err := c.getActivities(5)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "get activities:", err)
+		os.Exit(1)
+	}
+	for _, a := range activities {
+		fmt.Println(a.StartTimeLocal, a.Type.TypeKey, a.Name, a.Distance)
+	}
 }

@@ -58,7 +58,7 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
   and the `(value, error)` return pattern with `if err != nil`.
 - Done when `go run .` prints "token OK". Never print the token.
 
-### [ ] 3. Fetch activities
+### [x] 3. Fetch activities
 - A `client` struct (`*http.Client`, token, base URL) with method
   `getActivities(limit int) ([]Activity, error)`.
 - An `Activity` struct with only the fields you need. Unknown JSON fields are ignored.
