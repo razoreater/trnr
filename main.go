@@ -25,7 +25,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "get activities:", err)
 		os.Exit(1)
 	}
-	for _, a := range activities {
-		fmt.Println(a.StartTimeLocal, a.Type.TypeKey, a.Name, a.Distance)
-	}
+
+	printTable(activities)
 }

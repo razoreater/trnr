@@ -66,7 +66,7 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 - Concepts: methods and receivers, slices, `url.Values` for query strings, nested structs,
   `json.NewDecoder(...).Decode(&v)` into a struct with `json:"..."` tags.
 
-### [ ] 4. Print a table
+### [x] 4. Print a table
 - `text/tabwriter` columns: date | type | name | km | h:mm | pace or speed | avg HR | TE
 - Show pace (min/km) for running and km/h for cycling, using a `switch` on `typeKey`.
 - Concepts: `time.Parse`, `time.Duration`, `fmt` verbs (`%5.1f`, `%-20s`).
