@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -25,7 +26,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	token, err := getToken(apiKey)
+	token, err := accessToken(apiKey, false)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "get token:", err)
 		os.Exit(1)
@@ -39,6 +40,15 @@ func main() {
 
 	c := &client{http: http.DefaultClient, token: token, baseURL: baseURL}
 	activities, err := c.fetchActivities(*n, *activityType, from)
+	if errors.Is(err, errUnauthorized) {
+		// The cached token was revoked or expired early: get a new one, try once more.
+		c.token, err = accessToken(apiKey, true)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get token:", err)
+			os.Exit(1)
+		}
+		activities, err = c.fetchActivities(*n, *activityType, from)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "get activities:", err)
 		os.Exit(1)

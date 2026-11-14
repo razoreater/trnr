@@ -78,7 +78,7 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
   distance, time and count per week.
 - Concepts: maps, pointers, `sort.Slice` / `slices.Sort`.
 
-### [ ] 6. Token cache
+### [x] 6. Token cache
 - Save the token and its expiry to `~/.cache/trnr/token.json` (`os.UserCacheDir`)
   with file mode `0600`. Reuse it while it's valid and fetch a new one on expiry or a 401.
 - The token response has no expiry field: use `time.Now().Add(24 * time.Hour)`, or

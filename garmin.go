@@ -1,11 +1,15 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +42,104 @@ func getToken(apiKey string) (string, error) {
 		return "", fmt.Errorf("read token response: %w", err)
 	}
 	return strings.TrimSpace(string(body)), nil
+}
+
+// errUnauthorized means the API rejected the token (HTTP 401).
+var errUnauthorized = errors.New("unauthorized")
+
+// cachedToken is what we store in ~/.cache/trnr/token.json.
+type cachedToken struct {
+	Token   string    `json:"token"`
+	Expires time.Time `json:"expires"`
+}
+
+func tokenCachePath() (string, error) {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("find cache dir: %w", err)
+	}
+	return filepath.Join(dir, "trnr", "token.json"), nil
+}
+
+// loadCachedToken returns the cached token if there is one that is still
+// valid for at least a few minutes. Any problem just means "no token".
+func loadCachedToken() (string, bool) {
+	path, err := tokenCachePath()
+	if err != nil {
+		return "", false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	var cached cachedToken
+	if err := json.Unmarshal(data, &cached); err != nil {
+		return "", false
+	}
+	if cached.Token == "" || time.Now().Add(5*time.Minute).After(cached.Expires) {
+		return "", false
+	}
+	return cached.Token, true
+}
+
+func saveToken(token string, expires time.Time) error {
+	path, err := tokenCachePath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return fmt.Errorf("create cache dir: %w", err)
+	}
+	data, err := json.Marshal(cachedToken{Token: token, Expires: expires})
+	if err != nil {
+		return fmt.Errorf("encode token: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return fmt.Errorf("write token cache: %w", err)
+	}
+	// WriteFile only sets the mode when it creates the file, so enforce it.
+	return os.Chmod(path, 0o600)
+}
+
+// tokenExpiry reads the "exp" claim from the JWT's payload (the middle part,
+// base64url-encoded JSON). If that fails it assumes the documented 24h.
+func tokenExpiry(token string) time.Time {
+	fallback := time.Now().Add(24 * time.Hour)
+
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return fallback
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return fallback
+	}
+	var claims struct {
+		Exp int64 `json:"exp"` // seconds since 1970
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil || claims.Exp == 0 {
+		return fallback
+	}
+	return time.Unix(claims.Exp, 0)
+}
+
+// accessToken returns a cached token when possible. With refresh set, or
+// without a valid cached token, it fetches a new one and caches it.
+func accessToken(apiKey string, refresh bool) (string, error) {
+	if !refresh {
+		if token, ok := loadCachedToken(); ok {
+			return token, nil
+		}
+	}
+	token, err := getToken(apiKey)
+	if err != nil {
+		return "", err
+	}
+	if err := saveToken(token, tokenExpiry(token)); err != nil {
+		// Not fatal: we have a token, it just won't be reused next time.
+		fmt.Fprintln(os.Stderr, "warning: cache token:", err)
+	}
+	return token, nil
 }
 
 type Activity struct {
@@ -85,6 +187,9 @@ func (c *client) getActivities(start, limit int, activityType string) ([]Activit
 	}
 	defer response.Body.Close()
 
+	if response.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("activities request: %w", errUnauthorized)
+	}
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("activities request failed: status %d", response.StatusCode)
 	}
