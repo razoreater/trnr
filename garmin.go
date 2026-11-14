@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -62,10 +63,15 @@ type client struct {
 	baseURL string
 }
 
-func (c *client) getActivities(limit int) ([]Activity, error) {
+// getActivities fetches one page of activities, newest first. An empty
+// activityType means all types.
+func (c *client) getActivities(start, limit int, activityType string) ([]Activity, error) {
 	query := url.Values{}
-	query.Set("start", "0")
+	query.Set("start", strconv.Itoa(start))
 	query.Set("limit", strconv.Itoa(limit))
+	if activityType != "" {
+		query.Set("activityType", activityType)
+	}
 	activitiesURL := c.baseURL + "/activitylist-service/activities/search/activities?" + query.Encode()
 	request, err := http.NewRequest(http.MethodGet, activitiesURL, nil)
 	if err != nil {
@@ -88,4 +94,28 @@ func (c *client) getActivities(limit int) ([]Activity, error) {
 		return nil, fmt.Errorf("decode activities: %w", err)
 	}
 	return activities, nil
+}
+
+// fetchActivities pages through the activity list until it has at least n
+// activities and has gone back past since, or there are no more activities.
+func (c *client) fetchActivities(n int, activityType string, since time.Time) ([]Activity, error) {
+	const pageSize = 50
+	var all []Activity
+	for {
+		page, err := c.getActivities(len(all), pageSize, activityType)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page...)
+		if len(page) < pageSize {
+			return all, nil
+		}
+		oldest, err := parseStart(all[len(all)-1])
+		if err != nil {
+			return nil, err
+		}
+		if len(all) >= n && oldest.Before(since) {
+			return all, nil
+		}
+	}
 }

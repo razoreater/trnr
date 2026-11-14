@@ -72,7 +72,7 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 - Concepts: `time.Parse`, `time.Duration`, `fmt` verbs (`%5.1f`, `%-20s`).
 - Done when the table matches Garmin Connect web (spot-check distance and time).
 
-### [ ] 5. Flags and weekly totals
+### [x] 5. Flags and weekly totals
 - Flags `-n 10`, `-type running`, `-weeks 4` via the `flag` package.
 - Group by ISO week (`t.ISOWeek()`) into a `map[string]*weekTotal`, sort the keys, and print
   distance, time and count per week.
