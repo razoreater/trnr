@@ -53,10 +53,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	printTable(os.Stdout, activities[:min(*n, len(activities))])
-
 	if *weeks > 0 {
-		fmt.Println()
 		printWeeks(os.Stdout, weeklyTotals(activities, from, *weeks))
 	}
+	printTable(os.Stdout, activities[:min(*n, len(activities))])
 }

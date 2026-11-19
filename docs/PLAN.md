@@ -2,7 +2,7 @@
 
 A small Go CLI that gives an overview of recent Garmin training, using the official
 Garmin Connect **Personal API**. Stdlib only (Go 1.22+): `net/http`, `encoding/json`,
-`flag`, `text/tabwriter`, `time`, `os`. The optional step 9 adds lipgloss for styling.
+`flag`, `time`, `os`. Step 9 added lipgloss for styling (the only dependency).
 
 Tick a step when it's done (one commit per step).
 
@@ -99,22 +99,25 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 - Concepts: exported vs unexported names, `internal/`, dependency injection via struct
   fields and `io.Writer`, `t.Run` subtests, `t.TempDir`, `t.Cleanup`, `errors.Is`.
 
-### [ ] 9. Styled output with lipgloss (optional)
-- The first third-party dependency: `go get github.com/charmbracelet/lipgloss`.
-- Replace the `text/tabwriter` table with `lipgloss/table`: rounded border, bold header,
+### [x] 9. Styled output with lipgloss (optional)
+- [x] The first third-party dependency: `go get github.com/charmbracelet/lipgloss` (v1.1.0).
+- [x] Replace the `text/tabwriter` table with `lipgloss/table`: rounded border, bold header,
   right-aligned number columns via `StyleFunc(func(row, col int) lipgloss.Style)`.
-- Color rows by `typeKey` (e.g. running vs cycling).
-- Show the weekly totals from step 5 in a bordered summary box above the table.
-- Keep the cell formatting (km, h:mm, pace) from step 4. Only the rendering changes.
-- Check that `trnr | less` still prints clean text (lipgloss drops colors when stdout
-  isn't a terminal).
-- Concepts: `go get`, `go.mod` / `go.sum`, importing a subpackage, method chaining,
-  passing functions as values.
+- [x] Color rows by `typeKey` (running orange, cycling blue, walking green), with
+  `AdaptiveColor` so they read well on light and dark terminals.
+- [x] Show the weekly totals from step 5 in a bordered summary box above the table.
+- [x] Keep the cell formatting (km, h:mm, pace) from step 4. `activityRows` / `weekRows`
+  build the cells, `render.go` only draws them.
+- [x] `trnr | less` prints clean text: `lipgloss.NewRenderer(out)` drops colors when the
+  output isn't a terminal. The rendering tests check for no escape codes.
+- Concepts: `go get`, `go.mod` / `go.sum`, `go mod tidy`, importing a subpackage, method
+  chaining, passing functions as values (and closures that capture variables).
 
 ## Target layout
 - `main.go`: flags, wiring, output
 - `internal/garmin/`: token and API client
-- `report.go`: table and weekly aggregation
+- `report.go`: cell formatting, table rows and weekly aggregation
+- `render.go`: lipgloss styles and drawing
 
 ## Checks
 - `go vet ./...` and `gofmt -l .` are clean, and `go test ./...` passes from step 8.

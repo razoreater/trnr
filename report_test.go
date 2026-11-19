@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -157,25 +158,102 @@ func TestWeeklyTotals(t *testing.T) {
 	}
 }
 
+func TestActivityRows(t *testing.T) {
+	run := activity("running", "2026-11-17 07:00:00", 10000, 3000, 1000.0/300)
+	run.Name = "Morning Run"
+	run.AverageHR = 148
+	run.AerobicTE = 3.2
+	yoga := activity("yoga", "2026-11-18 19:30:00", 0, 2700, 0)
+	yoga.Name = "Evening Yoga"
+
+	got := activityRows([]garmin.Activity{run, yoga})
+
+	want := [][]string{
+		{"Tue 17 Nov", "running", "Morning Run", "10.0", "0:50", "5:00 /km", "148", "3.2"},
+		{"Wed 18 Nov", "yoga", "Evening Yoga", "0.0", "0:45", "-", "0", "0.0"},
+	}
+	if !slices.EqualFunc(got, want, slices.Equal) {
+		t.Errorf("activityRows =\n%q\nwant\n%q", got, want)
+	}
+	for _, row := range got {
+		if len(row) != len(activityHeaders) {
+			t.Errorf("row has %d cells, headers has %d", len(row), len(activityHeaders))
+		}
+	}
+}
+
+func TestWeekRows(t *testing.T) {
+	totals := map[string]*weekTotal{
+		"2026-W47": {start: time.Date(2026, 11, 16, 0, 0, 0, 0, time.Local), count: 2, distance: 40000, duration: 6600},
+		"2026-W45": {start: time.Date(2026, 11, 2, 0, 0, 0, 0, time.Local), count: 1, distance: 5000, duration: 1500},
+		"2026-W46": {start: time.Date(2026, 11, 9, 0, 0, 0, 0, time.Local)},
+	}
+
+	got := weekRows(totals)
+
+	// Map order is random in Go, so the rows must be sorted by week.
+	want := [][]string{
+		{"2026-W45", "02 Nov", "1", "5.0", "0:25"},
+		{"2026-W46", "09 Nov", "0", "0.0", "0:00"},
+		{"2026-W47", "16 Nov", "2", "40.0", "1:50"},
+	}
+	if !slices.EqualFunc(got, want, slices.Equal) {
+		t.Errorf("weekRows =\n%q\nwant\n%q", got, want)
+	}
+}
+
+// The rendering tests compare the whole output. A bytes.Buffer is not a
+// terminal, so lipgloss must leave out all colors (ANSI escape codes).
+
 func TestPrintTable(t *testing.T) {
-	a := activity("running", "2026-11-17 07:00:00", 10000, 3000, 1000.0/300)
-	a.Name = "Morning Run"
-	a.AverageHR = 148
-	a.AerobicTE = 3.2
+	run := activity("running", "2026-11-17 07:00:00", 10000, 3000, 1000.0/300)
+	run.Name = "Morning Run"
+	run.AverageHR = 148
+	run.AerobicTE = 3.2
+	ride := activity("cycling", "2026-11-18 17:00:00", 30000, 3600, 30/3.6)
+	ride.Name = "Commute"
+	ride.AverageHR = 121
+	ride.AerobicTE = 1.4
 
 	var out bytes.Buffer
-	printTable(&out, []garmin.Activity{a})
+	printTable(&out, []garmin.Activity{run, ride})
 
-	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("got %d lines, want header + 1 row:\n%s", len(lines), out.String())
+	want := `╭────────────┬─────────┬─────────────┬──────┬──────┬───────────┬─────┬─────╮
+│ DATE       │ TYPE    │ NAME        │   KM │ TIME │      PACE │  HR │  TE │
+├────────────┼─────────┼─────────────┼──────┼──────┼───────────┼─────┼─────┤
+│ Tue 17 Nov │ running │ Morning Run │ 10.0 │ 0:50 │  5:00 /km │ 148 │ 3.2 │
+│ Wed 18 Nov │ cycling │ Commute     │ 30.0 │ 1:00 │ 30.0 km/h │ 121 │ 1.4 │
+╰────────────┴─────────┴─────────────┴──────┴──────┴───────────┴─────┴─────╯
+`
+	if strings.Contains(out.String(), "\x1b") {
+		t.Errorf("output has ANSI escape codes, want plain text:\n%q", out.String())
 	}
-	if got := strings.Fields(lines[0]); strings.Join(got, " ") != "DATE TYPE NAME KM TIME PACE HR TE" {
-		t.Errorf("header = %q", lines[0])
+	if out.String() != want {
+		t.Errorf("printTable output:\n%s\nwant:\n%s", out.String(), want)
 	}
-	for _, want := range []string{"Tue 17 Nov", "running", "Morning Run", "10.0", "0:50", "5:00 /km", "148", "3.2"} {
-		if !strings.Contains(lines[1], want) {
-			t.Errorf("row %q does not contain %q", lines[1], want)
-		}
+}
+
+func TestPrintWeeks(t *testing.T) {
+	totals := map[string]*weekTotal{
+		"2026-W46": {start: time.Date(2026, 11, 9, 0, 0, 0, 0, time.Local), count: 18, distance: 68000, duration: 38160},
+		"2026-W47": {start: time.Date(2026, 11, 16, 0, 0, 0, 0, time.Local), count: 9, distance: 41100, duration: 22260},
+	}
+
+	var out bytes.Buffer
+	printWeeks(&out, totals)
+
+	want := `╭──────────────────────────────────────╮
+│ Weekly totals                        │
+│ WEEK      FROM    COUNT    KM   TIME │
+│──────────────────────────────────────│
+│ 2026-W46  09 Nov     18  68.0  10:36 │
+│ 2026-W47  16 Nov      9  41.1   6:11 │
+╰──────────────────────────────────────╯
+`
+	if strings.Contains(out.String(), "\x1b") {
+		t.Errorf("output has ANSI escape codes, want plain text:\n%q", out.String())
+	}
+	if out.String() != want {
+		t.Errorf("printWeeks output:\n%s\nwant:\n%s", out.String(), want)
 	}
 }

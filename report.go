@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"slices"
-	"text/tabwriter"
 	"time"
 
 	"github.com/razoreater/trnr/internal/garmin"
@@ -52,24 +50,24 @@ func formatPace(a garmin.Activity) string {
 	}
 }
 
-func printTable(out io.Writer, activities []garmin.Activity) {
-	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "DATE\tTYPE\tNAME\tKM\tTIME\tPACE\tHR\tTE")
+var activityHeaders = []string{"DATE", "TYPE", "NAME", "KM", "TIME", "PACE", "HR", "TE"}
 
+// activityRows formats each activity as one table row of text cells.
+func activityRows(activities []garmin.Activity) [][]string {
+	rows := make([][]string, 0, len(activities))
 	for _, a := range activities {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%.0f\t%.1f\n",
+		rows = append(rows, []string{
 			formatDate(a),
 			a.Type.TypeKey,
 			a.Name,
 			formatKm(a.Distance),
 			formatDuration(a.Duration),
 			formatPace(a),
-			a.AverageHR,
-			a.AerobicTE,
-		)
+			fmt.Sprintf("%.0f", a.AverageHR),
+			fmt.Sprintf("%.1f", a.AerobicTE),
+		})
 	}
-
-	w.Flush()
+	return rows
 }
 
 type weekTotal struct {
@@ -118,24 +116,26 @@ func weeklyTotals(activities []garmin.Activity, from time.Time, weeks int) map[s
 	return totals
 }
 
-func printWeeks(out io.Writer, totals map[string]*weekTotal) {
+var weekHeaders = []string{"WEEK", "FROM", "COUNT", "KM", "TIME"}
+
+// weekRows formats the weekly totals as table rows, oldest week first.
+func weekRows(totals map[string]*weekTotal) [][]string {
 	keys := make([]string, 0, len(totals))
 	for key := range totals {
 		keys = append(keys, key)
 	}
 	slices.Sort(keys)
 
-	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "WEEK\tFROM\tCOUNT\tKM\tTIME")
+	rows := make([][]string, 0, len(keys))
 	for _, key := range keys {
 		total := totals[key]
-		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\n",
+		rows = append(rows, []string{
 			key,
 			total.start.Format("02 Jan"),
-			total.count,
+			fmt.Sprint(total.count),
 			formatKm(total.distance),
 			formatDuration(total.duration),
-		)
+		})
 	}
-	w.Flush()
+	return rows
 }
