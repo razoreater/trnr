@@ -88,9 +88,16 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 ### [ ] 7. Wellness (optional)
 - A `-wellness` flag that shows HRV, sleep and body battery for the last 7 days.
 
-### [ ] 8. Package split and tests (optional)
-- Move the API client to `internal/garmin/`.
-- Table-driven tests for formatting, plus `httptest.Server` to fake the API.
+### [x] 8. Package split and tests (optional)
+- [x] Move the API client to `internal/garmin/` (`client.go`, `token.go`). The token is
+  unexported: `main` calls `c.Authenticate(refresh)` and never sees it.
+- [x] `Client` fields `BaseURL` and `CachePath` so tests can use a fake server and a temp dir.
+- [x] `printTable` / `printWeeks` take an `io.Writer` so tests can capture the output.
+- [x] Table-driven tests for formatting and weeks (`report_test.go`), plus `httptest.Server`
+  to fake the API (`internal/garmin/client_test.go`).
+- [x] Fixed a bug the tests found: pace truncated instead of rounding (3:15 showed as 3:14).
+- Concepts: exported vs unexported names, `internal/`, dependency injection via struct
+  fields and `io.Writer`, `t.Run` subtests, `t.TempDir`, `t.Cleanup`, `errors.Is`.
 
 ### [ ] 9. Styled output with lipgloss (optional)
 - The first third-party dependency: `go get github.com/charmbracelet/lipgloss`.
@@ -106,7 +113,7 @@ Activity list fields you'll need: `startTimeLocal`, `activityName`, `activityTyp
 
 ## Target layout
 - `main.go`: flags, wiring, output
-- `garmin.go`: token and API client (later `internal/garmin/`)
+- `internal/garmin/`: token and API client
 - `report.go`: table and weekly aggregation
 
 ## Checks

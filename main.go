@@ -4,9 +4,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
+
+	"github.com/razoreater/trnr/internal/garmin"
 )
 
 func main() {
@@ -26,8 +27,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	token, err := accessToken(apiKey, false)
-	if err != nil {
+	c := garmin.New(apiKey)
+	if err := c.Authenticate(false); err != nil {
 		fmt.Fprintln(os.Stderr, "get token:", err)
 		os.Exit(1)
 	}
@@ -38,26 +39,24 @@ func main() {
 		from = time.Now()
 	}
 
-	c := &client{http: http.DefaultClient, token: token, baseURL: baseURL}
-	activities, err := c.fetchActivities(*n, *activityType, from)
-	if errors.Is(err, errUnauthorized) {
+	activities, err := c.FetchActivities(*n, *activityType, from)
+	if errors.Is(err, garmin.ErrUnauthorized) {
 		// The cached token was revoked or expired early: get a new one, try once more.
-		c.token, err = accessToken(apiKey, true)
-		if err != nil {
+		if err := c.Authenticate(true); err != nil {
 			fmt.Fprintln(os.Stderr, "get token:", err)
 			os.Exit(1)
 		}
-		activities, err = c.fetchActivities(*n, *activityType, from)
+		activities, err = c.FetchActivities(*n, *activityType, from)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "get activities:", err)
 		os.Exit(1)
 	}
 
-	printTable(activities[:min(*n, len(activities))])
+	printTable(os.Stdout, activities[:min(*n, len(activities))])
 
 	if *weeks > 0 {
 		fmt.Println()
-		printWeeks(weeklyTotals(activities, from, *weeks))
+		printWeeks(os.Stdout, weeklyTotals(activities, from, *weeks))
 	}
 }
